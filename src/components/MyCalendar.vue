@@ -31,32 +31,49 @@ const selectedDate = ref(undefined as undefined | Date) // for final selection
 
 const idStart = getNextCompId()
 
-watch(
-  () => props.modelValue,
-  val => {
-    if (val) {
-      try {
-        selectedDate.value = currentDate.value = parseDate(
-          val,
-          props.format || 'yyyy-MM-dd',
-          new Date()
-        )
-      } catch (err) {}
-    }
-  },
-  { immediate: true }
-)
-watch(selectedDate, val => {
-  let text = ''
-  if (val) {
-    try {
-      text = formatDate(val, props.format || 'yyyy-MM-dd')
-    } catch (err) {}
+const displayMode = ref('day' as 'day' | 'month' | 'year')
+const prevBtnText = computed(() => {
+  switch (displayMode.value) {
+    case 'day':
+      return 'Previous month'
+    case 'month':
+      return 'Previous year'
+    case 'year':
+      return 'Prevous decade'
   }
-  emits('update:modelValue', text)
+  return ''
 })
-
-const displayMode = ref('day')
+const nextBtnText = computed(() => {
+  switch (displayMode.value) {
+    case 'day':
+      return 'Next month'
+    case 'month':
+      return 'Next year'
+    case 'year':
+      return 'Next decade'
+  }
+  return ''
+})
+const headerTitleText = computed(() => {
+  switch (displayMode.value) {
+    case 'day':
+      return `${currentMonth.value} ${currentYear.value}`
+    case 'month':
+      return currentYear.value
+    case 'year':
+      const decade = getDecade(currentDate.value)
+      return `${decade} - ${decade + 9}`
+  }
+  return ''
+})
+const headerToolTip = computed(() => {
+  switch (displayMode.value) {
+    case 'day':
+      return 'Change month'
+    case 'month':
+      return 'Change year'
+  }
+})
 
 const isAtMinDate = computed(() => {
   switch (displayMode.value) {
@@ -152,6 +169,34 @@ const dispYears = computed(() => {
   return years
 })
 
+watch(
+  () => props.modelValue,
+  val => {
+    if (val) {
+      try {
+        selectedDate.value = currentDate.value = parseDate(
+          val,
+          props.format || 'yyyy-MM-dd',
+          new Date()
+        )
+      } catch (err) {}
+    }
+    displayMode.value = 'day'
+  },
+  { immediate: true }
+)
+watch(selectedDate, val => {
+  let text = ''
+  if (val) {
+    try {
+      text = formatDate(val, props.format || 'yyyy-MM-dd')
+    } catch (err) {}
+  }
+  emits('update:modelValue', text)
+  displayMode.value = 'day'
+})
+
+
 function showPrev() {
   switch (displayMode.value) {
     case 'day':
@@ -214,7 +259,7 @@ function getDayClass(day: Date, dayIdx: number) {
   return css
 }
 function getMonthClass(day: Date, dayIdx: number) {
-  let css = 'py-6 focus:z-10 focus:outline-none '
+  let css = 'py-5 focus:z-10 focus:outline-none '
   if (isSameDay(day, selectedDate.value)) {
     css +=
       'bg-blue-200 text-blue-800 font-medium focus:bg-blue-100 focus:ring-1 focus:ring-blue-600 '
@@ -234,7 +279,7 @@ function getMonthClass(day: Date, dayIdx: number) {
   return css
 }
 function getYearClass(day: Date, dayIdx: number) {
-  let css = 'py-6 focus:z-10 focus:outline-none '
+  let css = 'py-5 focus:z-10 focus:outline-none '
   if (isSameDay(day, selectedDate.value)) {
     css +=
       'bg-blue-200 text-blue-800 font-medium focus:bg-blue-100 focus:ring-1 focus:ring-blue-600 '
@@ -265,41 +310,36 @@ function chooseYear(day: Date) {
   nextTick(focus)
 }
 
-const dayTraversalMap = {
-  ArrowUp: (day: Date) => subDays(day, 7),
-  ArrowDown: (day: Date) => addDays(day, 7),
-  ArrowLeft: (day: Date) => subDays(day, 1),
-  ArrowRight: (day: Date) => addDays(day, 1),
-  PageUp: (day: Date) => subMonths(day, 1),
-  PageDown: (day: Date) => addMonths(day, 1)
-} as Record<string, (d: Date) => Date>
-const monthTraversalMap = {
-  ArrowUp: (day: Date) => subMonths(day, 4),
-  ArrowDown: (day: Date) => addMonths(day, 4),
-  ArrowLeft: (day: Date) => subMonths(day, 1),
-  ArrowRight: (day: Date) => addMonths(day, 1),
-  PageUp: (day: Date) => subMonths(day, 12),
-  PageDown: (day: Date) => addMonths(day, 12)
-} as Record<string, (d: Date) => Date>
-const yearTraversalMap = {
-  ArrowUp: (day: Date) => subYears(day, 4),
-  ArrowDown: (day: Date) => addYears(day, 4),
-  ArrowLeft: (day: Date) => subYears(day, 1),
-  ArrowRight: (day: Date) => addYears(day, 1),
-  PageUp: (day: Date) => subYears(day, 10),
-  PageDown: (day: Date) => addYears(day, 10)
-} as Record<string, (d: Date) => Date>
+const keyTravelMaps = {
+  day: {
+    ArrowUp: day => subDays(day, 7),
+    ArrowDown: day => addDays(day, 7),
+    ArrowLeft: day => subDays(day, 1),
+    ArrowRight: day => addDays(day, 1),
+    PageUp: day => subMonths(day, 1),
+    PageDown: day => addMonths(day, 1)
+  },
+  month: {
+    ArrowUp: day => subMonths(day, 4),
+    ArrowDown: day => addMonths(day, 4),
+    ArrowLeft: day => subMonths(day, 1),
+    ArrowRight: day => addMonths(day, 1),
+    PageUp: day => subMonths(day, 12),
+    PageDown: day => addMonths(day, 12)
+  },
+  year: {
+    ArrowUp: day => subYears(day, 4),
+    ArrowDown: day => addYears(day, 4),
+    ArrowLeft: day => subYears(day, 1),
+    ArrowRight: day => addYears(day, 1),
+    PageUp: day => subYears(day, 10),
+    PageDown: day => addYears(day, 10)
+  }
+} as Record<string, Record<string, (d: Date) => Date>>
 
 function handleTraversal(e: KeyboardEvent) {
   let prevent = false
-  const func =
-    displayMode.value === 'day'
-      ? dayTraversalMap[e.key]
-      : displayMode.value === 'month'
-      ? monthTraversalMap[e.key]
-      : displayMode.value === 'year'
-      ? yearTraversalMap[e.key]
-      : null
+  const func = keyTravelMaps[displayMode.value][e.key]
   if (func) {
     currentDate.value = func(currentDate.value)
     e.preventDefault()
@@ -307,8 +347,24 @@ function handleTraversal(e: KeyboardEvent) {
   }
 }
 
+function handleHeaderClick() {
+  switch (displayMode.value) {
+    case 'day':
+      displayMode.value = 'month'
+      break
+    case 'month':
+      displayMode.value = 'year'
+      break
+  }
+}
+
+/**
+ * Focuses on the calender entry button.
+ */
 function focus() {
-  const idToFocus = `${idStart}-${displayMode.value}btn-${currentDate.value.getTime()}`
+  const idToFocus = `${idStart}-${
+    displayMode.value
+  }btn-${currentDate.value.getTime()}`
   // console.log('try to focus on', idToFocus)
   const btn = document.getElementById(idToFocus)
   if (btn) {
@@ -321,22 +377,27 @@ defineExpose({ focus, displayMode })
 </script>
 <template>
   <div class="p-4">
-    <div
-      v-if="displayMode === 'year'"
-      class="text-center"
-      style="min-height: 380px"
-    >
+    <div class="text-center" style="min-height: 380px; min-width: 300px">
       <div class="flex items-center">
         <h2 class="flex-auto font-semibold text-gray-600 text-left p-1.5">
-          {{ getDecade(currentDate) }} - {{ getDecade(currentDate) + 9 }}
+          <button
+            type="button"
+            class="flex flex-none items-center justify-center p-1.5 text-gray-600 enabled:hover:text-gray-700 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"
+            @click="handleHeaderClick"
+            :disabled="displayMode === 'year'"
+            :title="headerToolTip"
+          >
+            {{ headerTitleText }}
+          </button>
         </h2>
         <button
           type="button"
           class="-my-1.5 flex flex-none items-center justify-center p-1.5 text-gray-400 enabled:hover:text-gray-500 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"
           @click="showPrev"
           :disabled="isAtMinDate"
+          :title="prevBtnText"
         >
-          <span class="sr-only">Previous decade</span>
+          <span class="sr-only">{{ prevBtnText }}</span>
           <ChevronUpIcon class="h-5 w-5" aria-hidden="true" />
         </button>
         <button
@@ -344,13 +405,15 @@ defineExpose({ focus, displayMode })
           class="-my-1.5 -mr-1.5 ml-2 flex flex-none items-center justify-center p-1.5 text-gray-400 enabled:hover:text-gray-500 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"
           @click="showNext"
           :disabled="isAtMaxDate"
+          :title="nextBtnText"
         >
-          <span class="sr-only">Next decade</span>
+          <span class="sr-only">{{ nextBtnText }}</span>
           <ChevronDownIcon class="h-5 w-5" aria-hidden="true" />
         </button>
       </div>
       <div
         class="isolate mt-6 grid grid-cols-4 gap-px rounded-lg bg-gray-200 text-sm shadow ring-1 ring-gray-200"
+        v-if="displayMode === 'year'"
       >
         <button
           v-for="(year, dayIdx) in dispYears"
@@ -373,43 +436,9 @@ defineExpose({ focus, displayMode })
           </time>
         </button>
       </div>
-    </div>
-    <div
-      v-if="displayMode === 'month'"
-      class="text-center"
-      style="min-height: 380px"
-    >
-      <div class="flex items-center">
-        <h2 class="flex-auto font-semibold text-gray-900">
-          <button
-            type="button"
-            class="flex flex-none items-center justify-center p-1.5 text-gray-600 hover:text-gray-700 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"
-            @click="displayMode = 'year'"
-          >
-            {{ currentYear }}
-          </button>
-        </h2>
-        <button
-          type="button"
-          class="-my-1.5 flex flex-none items-center justify-center p-1.5 text-gray-400 enabled:hover:text-gray-500 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"
-          @click="showPrev"
-          :disabled="isAtMinDate"
-        >
-          <span class="sr-only">Previous year</span>
-          <ChevronUpIcon class="h-5 w-5" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          class="-my-1.5 -mr-1.5 ml-2 flex flex-none items-center justify-center p-1.5 text-gray-400 enabled:hover:text-gray-500 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"
-          @click="showNext"
-          :disabled="isAtMaxDate"
-        >
-          <span class="sr-only">Next year</span>
-          <ChevronDownIcon class="h-5 w-5" aria-hidden="true" />
-        </button>
-      </div>
       <div
         class="isolate mt-6 grid grid-cols-4 gap-px rounded-lg bg-gray-200 text-sm shadow ring-1 ring-gray-200"
+        v-if="displayMode === 'month'"
       >
         <button
           v-for="(month, dayIdx) in dispMonths"
@@ -432,46 +461,15 @@ defineExpose({ focus, displayMode })
           </time>
         </button>
       </div>
-    </div>
-    <div
-      v-if="displayMode === 'day'"
-      class="text-center"
-      style="min-height: 380px"
-    >
-      <div class="flex items-center">
-        <h2 class="flex-auto font-semibold text-gray-900">
-          <button
-            type="button"
-            class="flex flex-none items-center justify-center p-1.5 text-gray-600 hover:text-gray-700 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"
-            @click="displayMode = 'month'"
-          >
-            {{ currentMonth }} {{ currentYear }}
-          </button>
-        </h2>
-        <button
-          type="button"
-          class="-my-1.5 flex flex-none items-center justify-center p-1.5 text-gray-400 enabled:hover:text-gray-500 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"
-          @click="showPrev"
-          :disabled="isAtMinDate"
-        >
-          <span class="sr-only">Previous month</span>
-          <ChevronUpIcon class="h-5 w-5" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          class="-my-1.5 -mr-1.5 ml-2 flex flex-none items-center justify-center p-1.5 text-gray-400 enabled:hover:text-gray-500 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"
-          @click="showNext"
-          :disabled="isAtMaxDate"
-        >
-          <span class="sr-only">Next month</span>
-          <ChevronDownIcon class="h-5 w-5" aria-hidden="true" />
-        </button>
-      </div>
-      <div class="mt-6 grid grid-cols-7 text-xs leading-6 text-gray-700">
+      <div
+        class="mt-4 grid grid-cols-7 text-xs leading-6 text-gray-700"
+        v-if="displayMode === 'day'"
+      >
         <div v-for="d in daysOfWeek" :key="d">{{ d }}</div>
       </div>
       <div
         class="isolate mt-2 grid grid-cols-7 gap-px rounded-lg bg-gray-200 text-sm shadow ring-1 ring-gray-200"
+        v-if="displayMode === 'day'"
       >
         <button
           v-for="(day, dayIdx) in dispDays"
@@ -494,7 +492,7 @@ defineExpose({ focus, displayMode })
           </time>
         </button>
       </div>
-      <div class="mt-2 flex items-center text-sm">
+      <div class="mt-2 flex items-center text-sm" v-if="displayMode === 'day'">
         <button
           type="button"
           class="ml-2 flex flex-none items-center justify-center p-1.5 text-blue-600 hover:text-blue-700 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"

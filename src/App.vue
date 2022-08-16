@@ -15,12 +15,13 @@ watch(dateValue, val => {
   <div class="p-4">
     <!-- <img alt="Vue logo" src="./assets/logo.png" /> -->
 
+    variable value = {{ dateValue }}
+
+    <div class="border border-red-600">
+      <input type="date" />
+    </div>
     <div class="border border-red-600">
       <MyDatePick v-model="dateValue" format="yyyy/MM/dd" />
-      <!-- <MyDatePick v-model="dateValue" format="yyyy/MM/dd" />
-      <MyDatePick v-model="dateValue" format="yyyy/MM/dd" /> -->
-
-      variable value = {{ dateValue }}
     </div>
 
     <div class="border border-red-600">
