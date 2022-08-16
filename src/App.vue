@@ -4,6 +4,7 @@ import { ref, watch } from 'vue'
 // Check out https://vuejs.org/api/sfc-script-setup.html#script-setup
 import MyDatePick from './components/MyDatePick.vue'
 import MyCalendar from './components/MyCalendar.vue'
+import MyCalendarButton from './components/MyCalendarButton.vue'
 
 const dateValue = ref('2022/2/2')
 watch(dateValue, val => {
@@ -26,6 +27,9 @@ watch(dateValue, val => {
 
     <div class="border border-red-600">
       <MyCalendar v-model="dateValue" format="yyyy/MM/dd" />
+    </div>
+    <div class="border border-red-600">
+      <MyCalendarButton v-model="dateValue" format="yyyy/MM/dd" />
     </div>
   </div>
 </template>

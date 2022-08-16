@@ -371,15 +371,15 @@ function focus() {
   const idToFocus = `${idStart}-${
     displayMode.value
   }btn-${currentDate.value.getTime()}`
-  // console.log('try to focus on', idToFocus)
+  console.log('try to focus on', idToFocus)
   const btn = document.getElementById(idToFocus)
   if (btn) {
-    // console.log('should focus')
+    console.log('should focus')
     btn.focus()
   }
 }
 
-defineExpose({ focus, displayMode })
+defineExpose({ focus })
 </script>
 <template>
   <div class="p-4">

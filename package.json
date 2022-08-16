@@ -11,6 +11,7 @@
     "@headlessui/vue": "^1.6.7",
     "@heroicons/vue": "^1.0.6",
     "date-fns": "^2.29.1",
+    "tippy.js": "^6.3.7",
     "vue": "^3.2.25"
   },
   "devDependencies": {
