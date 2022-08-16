@@ -11,7 +11,14 @@ import addMonths from 'date-fns/addMonths'
 import subMonths from 'date-fns/subMonths'
 import addYears from 'date-fns/addYears'
 import subYears from 'date-fns/subYears'
-import { getDecade, isSameDay, getNextCompId } from './calendarUtil'
+import {
+  getDecade,
+  isSameDay,
+  getNextCompId,
+  getWeekdayName,
+  getMonthName,
+  machineFormat
+} from './calendarUtil'
 
 const props = withDefaults(
   defineProps<{
@@ -107,16 +114,16 @@ const daysOfWeek = computed(() => {
   const days = [] as string[]
   let startDate = startOfWeek(currentDate.value)
   for (let i = 0; i < 7; i++) {
-    days.push(formatDate(addDays(startDate, i), 'E'))
+    days.push(getWeekdayName(addDays(startDate, i), true))
   }
   return days
 })
 
 const currentYear = computed(() => {
-  return formatDate(currentDate.value, 'yyyy')
+  return currentDate.value.getFullYear()
 })
 const currentMonth = computed(() => {
-  return formatDate(currentDate.value, 'MMMM')
+  return getMonthName(currentDate.value, false)
 })
 const dispDays = computed(() => {
   const days = [] as Date[]
@@ -195,7 +202,6 @@ watch(selectedDate, val => {
   emits('update:modelValue', text)
   displayMode.value = 'day'
 })
-
 
 function showPrev() {
   switch (displayMode.value) {
@@ -426,13 +432,13 @@ defineExpose({ focus, displayMode })
           :tabindex="isSameDay(year, currentDate) ? 0 : -1"
         >
           <time
-            :datetime="formatDate(year, 'yyyy-MM-dd')"
+            :datetime="year.getFullYear().toString()"
             :class="[
               isSameDay(year, today) && 'bg-blue-600 font-semibold text-white',
               'mx-auto flex h-7 w-7 items-center justify-center rounded-full'
             ]"
           >
-            {{ formatDate(year, 'yyyy') }}
+            {{ year.getFullYear() }}
           </time>
         </button>
       </div>
@@ -451,13 +457,13 @@ defineExpose({ focus, displayMode })
           :tabindex="isSameDay(month, currentDate) ? 0 : -1"
         >
           <time
-            :datetime="formatDate(month, 'yyyy-MM-dd')"
+            :datetime="machineFormat(month, true, true)"
             :class="[
               isSameDay(month, today) && 'bg-blue-600 font-semibold text-white',
               'mx-auto flex h-7 w-7 items-center justify-center rounded-full'
             ]"
           >
-            {{ formatDate(month, 'MMM') }}
+            {{ getMonthName(month, true) }}
           </time>
         </button>
       </div>
@@ -482,13 +488,13 @@ defineExpose({ focus, displayMode })
           :tabindex="isSameDay(day, currentDate) ? 0 : -1"
         >
           <time
-            :datetime="formatDate(day, 'yyyy-MM-dd')"
+            :datetime="machineFormat(day, true, true, true)"
             :class="[
               isSameDay(day, today) && 'bg-blue-600 font-semibold text-white',
               'mx-auto flex h-7 w-7 items-center justify-center rounded-full'
             ]"
           >
-            {{ formatDate(day, 'd') }}
+            {{ day.getDate() }}
           </time>
         </button>
       </div>
