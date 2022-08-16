@@ -1,0 +1,516 @@
+<script lang="ts" setup>
+import { ref, computed, watch, nextTick } from 'vue'
+import { ChevronUpIcon, ChevronDownIcon } from '@heroicons/vue/solid'
+import parseDate from 'date-fns/parse'
+import formatDate from 'date-fns/format'
+import startOfWeek from 'date-fns/startOfWeek'
+import startOfMonth from 'date-fns/startOfMonth'
+import addDays from 'date-fns/addDays'
+import subDays from 'date-fns/subDays'
+import addMonths from 'date-fns/addMonths'
+import subMonths from 'date-fns/subMonths'
+import addYears from 'date-fns/addYears'
+import subYears from 'date-fns/subYears'
+import { getDecade, isSameDay, getNextCompId } from './calendarUtil'
+
+const props = withDefaults(
+  defineProps<{
+    modelValue: string
+    format?: string
+  }>(),
+  { format: 'yyyy-MM-dd' }
+)
+
+const emits = defineEmits<{
+  (e: 'update:modelValue', value: string): void
+}>()
+
+const today = new Date()
+const currentDate = ref(new Date()) // for current month display
+const selectedDate = ref(undefined as undefined | Date) // for final selection
+
+const idStart = getNextCompId()
+
+watch(
+  () => props.modelValue,
+  val => {
+    if (val) {
+      try {
+        selectedDate.value = currentDate.value = parseDate(
+          val,
+          props.format || 'yyyy-MM-dd',
+          new Date()
+        )
+      } catch (err) {}
+    }
+  },
+  { immediate: true }
+)
+watch(selectedDate, val => {
+  let text = ''
+  if (val) {
+    try {
+      text = formatDate(val, props.format || 'yyyy-MM-dd')
+    } catch (err) {}
+  }
+  emits('update:modelValue', text)
+})
+
+const displayMode = ref('day')
+
+const isAtMinDate = computed(() => {
+  switch (displayMode.value) {
+    case 'day':
+      return (
+        currentDate.value.getFullYear() < 2 && currentDate.value.getMonth() < 1
+      )
+    case 'month':
+      return currentDate.value.getFullYear() < 2
+    case 'year':
+      return currentDate.value.getFullYear() < 10
+  }
+  return false
+})
+const isAtMaxDate = computed(() => {
+  switch (displayMode.value) {
+    case 'day':
+      return (
+        currentDate.value.getFullYear() >= 9999 &&
+        currentDate.value.getMonth() >= 11
+      )
+    case 'month':
+      return currentDate.value.getFullYear() >= 9999
+    case 'year':
+      return currentDate.value.getFullYear() >= 9990
+  }
+  return false
+})
+
+const daysOfWeek = computed(() => {
+  const days = [] as string[]
+  let startDate = startOfWeek(currentDate.value)
+  for (let i = 0; i < 7; i++) {
+    days.push(formatDate(addDays(startDate, i), 'E'))
+  }
+  return days
+})
+
+const currentYear = computed(() => {
+  return formatDate(currentDate.value, 'yyyy')
+})
+const currentMonth = computed(() => {
+  return formatDate(currentDate.value, 'MMMM')
+})
+const dispDays = computed(() => {
+  const days = [] as Date[]
+
+  const monthStart = startOfMonth(currentDate.value)
+  const startDate = startOfWeek(monthStart)
+
+  let day = startDate
+
+  for (let i = 0; i < 42; i++) {
+    days.push(day)
+    day = addDays(day, 1)
+  }
+  return days
+})
+
+const dispMonths = computed(() => {
+  const months = []
+  let day = new Date(
+    currentDate.value.getFullYear(),
+    0,
+    currentDate.value.getDate()
+  )
+  for (let i = 0; i < 16; i++) {
+    months.push(day)
+    day = addMonths(day, 1)
+  }
+  return months
+})
+
+const dispYears = computed(() => {
+  const years = []
+
+  // assume year 0 starts at top left,
+  // then positions of each decade (year xxx0)
+  // is index 0, 2, 0, 2 (even=0, odd=2)
+  const decadeYr = getDecade(currentDate.value)
+  const decadeDigit = Math.floor((decadeYr / 10) % 10)
+  const offset = decadeDigit % 2 === 0 ? 0 : 2
+
+  let day = new Date(
+    decadeYr - offset,
+    currentDate.value.getMonth(),
+    currentDate.value.getDate()
+  )
+  for (let i = 0; i < 16; i++) {
+    years.push(day)
+    day = addYears(day, 1)
+  }
+  return years
+})
+
+function showPrev() {
+  switch (displayMode.value) {
+    case 'day':
+      currentDate.value = subMonths(currentDate.value, 1)
+      break
+    case 'month':
+      currentDate.value = subYears(currentDate.value, 1)
+      break
+    case 'year':
+      currentDate.value = subYears(currentDate.value, 10)
+      break
+  }
+}
+function showNext() {
+  switch (displayMode.value) {
+    case 'day':
+      currentDate.value = addMonths(currentDate.value, 1)
+      break
+    case 'month':
+      currentDate.value = addYears(currentDate.value, 1)
+      break
+    case 'year':
+      currentDate.value = addYears(currentDate.value, 10)
+      break
+  }
+}
+function clearDate() {
+  selectedDate.value = undefined
+}
+function useToday() {
+  selectedDate.value = currentDate.value = today
+}
+function isCurrentMonth(date: Date) {
+  return date.getMonth() === currentDate.value.getMonth()
+}
+function isCurrentYear(date: Date) {
+  return date.getFullYear() === currentDate.value.getFullYear()
+}
+function isCurrentDecade(date: Date) {
+  return getDecade(date) === getDecade(currentDate.value)
+}
+function getDayClass(day: Date, dayIdx: number) {
+  let css = 'py-1.5 focus:z-10 focus:outline-none '
+  if (isSameDay(day, selectedDate.value)) {
+    css +=
+      'bg-blue-200 text-blue-800 font-medium focus:bg-blue-100 focus:ring-1 focus:ring-blue-600 '
+  } else if (isSameDay(day, currentDate.value)) {
+    css += 'focus:bg-gray-100 focus:ring-1 focus:ring-blue-600 '
+  } else if (isCurrentMonth(day)) {
+    css += 'bg-white text-gray-900 focus:bg-gray-100 hover:bg-gray-100 '
+  } else {
+    css += 'bg-gray-50 text-gray-400 focus:bg-gray-100 hover:bg-gray-100 '
+  }
+
+  if (dayIdx === 0) css += 'rounded-tl-lg '
+  if (dayIdx === 6) css += 'rounded-tr-lg '
+  if (dayIdx === dispDays.value.length - 7) css += 'rounded-bl-lg'
+  if (dayIdx === dispDays.value.length - 1) css += 'rounded-br-lg'
+
+  return css
+}
+function getMonthClass(day: Date, dayIdx: number) {
+  let css = 'py-6 focus:z-10 focus:outline-none '
+  if (isSameDay(day, selectedDate.value)) {
+    css +=
+      'bg-blue-200 text-blue-800 font-medium focus:bg-blue-100 focus:ring-1 focus:ring-blue-600 '
+  } else if (isSameDay(day, currentDate.value)) {
+    css += 'focus:bg-gray-100 focus:ring-1 focus:ring-blue-600 '
+  } else if (isCurrentYear(day)) {
+    css += 'bg-white text-gray-900 focus:bg-gray-100 hover:bg-gray-100 '
+  } else {
+    css += 'bg-gray-50 text-gray-400 focus:bg-gray-100 hover:bg-gray-100 '
+  }
+
+  if (dayIdx === 0) css += 'rounded-tl-lg '
+  if (dayIdx === 3) css += 'rounded-tr-lg '
+  if (dayIdx === dispMonths.value.length - 4) css += 'rounded-bl-lg'
+  if (dayIdx === dispMonths.value.length - 1) css += 'rounded-br-lg'
+
+  return css
+}
+function getYearClass(day: Date, dayIdx: number) {
+  let css = 'py-6 focus:z-10 focus:outline-none '
+  if (isSameDay(day, selectedDate.value)) {
+    css +=
+      'bg-blue-200 text-blue-800 font-medium focus:bg-blue-100 focus:ring-1 focus:ring-blue-600 '
+  } else if (isSameDay(day, currentDate.value)) {
+    css += 'focus:bg-gray-100 focus:ring-1 focus:ring-blue-600 '
+  } else if (isCurrentDecade(day)) {
+    css += 'bg-white text-gray-900 focus:bg-gray-100 hover:bg-gray-100 '
+  } else {
+    css += 'bg-gray-50 text-gray-400 focus:bg-gray-100 hover:bg-gray-100 '
+  }
+
+  if (dayIdx === 0) css += 'rounded-tl-lg '
+  if (dayIdx === 3) css += 'rounded-tr-lg '
+  if (dayIdx === dispYears.value.length - 4) css += 'rounded-bl-lg'
+  if (dayIdx === dispYears.value.length - 1) css += 'rounded-br-lg'
+
+  return css
+}
+
+function chooseMonth(day: Date) {
+  currentDate.value = day
+  displayMode.value = 'day'
+  nextTick(focus)
+}
+function chooseYear(day: Date) {
+  currentDate.value = day
+  displayMode.value = 'month'
+  nextTick(focus)
+}
+
+const dayTraversalMap = {
+  ArrowUp: (day: Date) => subDays(day, 7),
+  ArrowDown: (day: Date) => addDays(day, 7),
+  ArrowLeft: (day: Date) => subDays(day, 1),
+  ArrowRight: (day: Date) => addDays(day, 1),
+  PageUp: (day: Date) => subMonths(day, 1),
+  PageDown: (day: Date) => addMonths(day, 1)
+} as Record<string, (d: Date) => Date>
+const monthTraversalMap = {
+  ArrowUp: (day: Date) => subMonths(day, 4),
+  ArrowDown: (day: Date) => addMonths(day, 4),
+  ArrowLeft: (day: Date) => subMonths(day, 1),
+  ArrowRight: (day: Date) => addMonths(day, 1),
+  PageUp: (day: Date) => subMonths(day, 12),
+  PageDown: (day: Date) => addMonths(day, 12)
+} as Record<string, (d: Date) => Date>
+const yearTraversalMap = {
+  ArrowUp: (day: Date) => subYears(day, 4),
+  ArrowDown: (day: Date) => addYears(day, 4),
+  ArrowLeft: (day: Date) => subYears(day, 1),
+  ArrowRight: (day: Date) => addYears(day, 1),
+  PageUp: (day: Date) => subYears(day, 10),
+  PageDown: (day: Date) => addYears(day, 10)
+} as Record<string, (d: Date) => Date>
+
+function handleTraversal(e: KeyboardEvent) {
+  let prevent = false
+  const func =
+    displayMode.value === 'day'
+      ? dayTraversalMap[e.key]
+      : displayMode.value === 'month'
+      ? monthTraversalMap[e.key]
+      : displayMode.value === 'year'
+      ? yearTraversalMap[e.key]
+      : null
+  if (func) {
+    currentDate.value = func(currentDate.value)
+    e.preventDefault()
+    nextTick(focus)
+  }
+}
+
+function focus() {
+  const idToFocus = `${idStart}-${displayMode.value}btn-${currentDate.value.getTime()}`
+  // console.log('try to focus on', idToFocus)
+  const btn = document.getElementById(idToFocus)
+  if (btn) {
+    // console.log('should focus')
+    btn.focus()
+  }
+}
+
+defineExpose({ focus, displayMode })
+</script>
+<template>
+  <div class="p-4">
+    <div
+      v-if="displayMode === 'year'"
+      class="text-center"
+      style="min-height: 380px"
+    >
+      <div class="flex items-center">
+        <h2 class="flex-auto font-semibold text-gray-600 text-left p-1.5">
+          {{ getDecade(currentDate) }} - {{ getDecade(currentDate) + 9 }}
+        </h2>
+        <button
+          type="button"
+          class="-my-1.5 flex flex-none items-center justify-center p-1.5 text-gray-400 enabled:hover:text-gray-500 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"
+          @click="showPrev"
+          :disabled="isAtMinDate"
+        >
+          <span class="sr-only">Previous decade</span>
+          <ChevronUpIcon class="h-5 w-5" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          class="-my-1.5 -mr-1.5 ml-2 flex flex-none items-center justify-center p-1.5 text-gray-400 enabled:hover:text-gray-500 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"
+          @click="showNext"
+          :disabled="isAtMaxDate"
+        >
+          <span class="sr-only">Next decade</span>
+          <ChevronDownIcon class="h-5 w-5" aria-hidden="true" />
+        </button>
+      </div>
+      <div
+        class="isolate mt-6 grid grid-cols-4 gap-px rounded-lg bg-gray-200 text-sm shadow ring-1 ring-gray-200"
+      >
+        <button
+          v-for="(year, dayIdx) in dispYears"
+          :key="year.getTime()"
+          :id="`${idStart}-yearbtn-${year.getTime()}`"
+          type="button"
+          :class="getYearClass(year, dayIdx)"
+          @click="chooseYear(year)"
+          @keydown="handleTraversal"
+          :tabindex="isSameDay(year, currentDate) ? 0 : -1"
+        >
+          <time
+            :datetime="formatDate(year, 'yyyy-MM-dd')"
+            :class="[
+              isSameDay(year, today) && 'bg-blue-600 font-semibold text-white',
+              'mx-auto flex h-7 w-7 items-center justify-center rounded-full'
+            ]"
+          >
+            {{ formatDate(year, 'yyyy') }}
+          </time>
+        </button>
+      </div>
+    </div>
+    <div
+      v-if="displayMode === 'month'"
+      class="text-center"
+      style="min-height: 380px"
+    >
+      <div class="flex items-center">
+        <h2 class="flex-auto font-semibold text-gray-900">
+          <button
+            type="button"
+            class="flex flex-none items-center justify-center p-1.5 text-gray-600 hover:text-gray-700 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"
+            @click="displayMode = 'year'"
+          >
+            {{ currentYear }}
+          </button>
+        </h2>
+        <button
+          type="button"
+          class="-my-1.5 flex flex-none items-center justify-center p-1.5 text-gray-400 enabled:hover:text-gray-500 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"
+          @click="showPrev"
+          :disabled="isAtMinDate"
+        >
+          <span class="sr-only">Previous year</span>
+          <ChevronUpIcon class="h-5 w-5" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          class="-my-1.5 -mr-1.5 ml-2 flex flex-none items-center justify-center p-1.5 text-gray-400 enabled:hover:text-gray-500 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"
+          @click="showNext"
+          :disabled="isAtMaxDate"
+        >
+          <span class="sr-only">Next year</span>
+          <ChevronDownIcon class="h-5 w-5" aria-hidden="true" />
+        </button>
+      </div>
+      <div
+        class="isolate mt-6 grid grid-cols-4 gap-px rounded-lg bg-gray-200 text-sm shadow ring-1 ring-gray-200"
+      >
+        <button
+          v-for="(month, dayIdx) in dispMonths"
+          :key="month.getTime()"
+          :id="`${idStart}-monthbtn-${month.getTime()}`"
+          type="button"
+          :class="getMonthClass(month, dayIdx)"
+          @click="chooseMonth(month)"
+          @keydown="handleTraversal"
+          :tabindex="isSameDay(month, currentDate) ? 0 : -1"
+        >
+          <time
+            :datetime="formatDate(month, 'yyyy-MM-dd')"
+            :class="[
+              isSameDay(month, today) && 'bg-blue-600 font-semibold text-white',
+              'mx-auto flex h-7 w-7 items-center justify-center rounded-full'
+            ]"
+          >
+            {{ formatDate(month, 'MMM') }}
+          </time>
+        </button>
+      </div>
+    </div>
+    <div
+      v-if="displayMode === 'day'"
+      class="text-center"
+      style="min-height: 380px"
+    >
+      <div class="flex items-center">
+        <h2 class="flex-auto font-semibold text-gray-900">
+          <button
+            type="button"
+            class="flex flex-none items-center justify-center p-1.5 text-gray-600 hover:text-gray-700 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"
+            @click="displayMode = 'month'"
+          >
+            {{ currentMonth }} {{ currentYear }}
+          </button>
+        </h2>
+        <button
+          type="button"
+          class="-my-1.5 flex flex-none items-center justify-center p-1.5 text-gray-400 enabled:hover:text-gray-500 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"
+          @click="showPrev"
+          :disabled="isAtMinDate"
+        >
+          <span class="sr-only">Previous month</span>
+          <ChevronUpIcon class="h-5 w-5" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          class="-my-1.5 -mr-1.5 ml-2 flex flex-none items-center justify-center p-1.5 text-gray-400 enabled:hover:text-gray-500 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"
+          @click="showNext"
+          :disabled="isAtMaxDate"
+        >
+          <span class="sr-only">Next month</span>
+          <ChevronDownIcon class="h-5 w-5" aria-hidden="true" />
+        </button>
+      </div>
+      <div class="mt-6 grid grid-cols-7 text-xs leading-6 text-gray-700">
+        <div v-for="d in daysOfWeek" :key="d">{{ d }}</div>
+      </div>
+      <div
+        class="isolate mt-2 grid grid-cols-7 gap-px rounded-lg bg-gray-200 text-sm shadow ring-1 ring-gray-200"
+      >
+        <button
+          v-for="(day, dayIdx) in dispDays"
+          :key="day.getTime()"
+          :id="`${idStart}-daybtn-${day.getTime()}`"
+          type="button"
+          :class="getDayClass(day, dayIdx)"
+          @click="selectedDate = day"
+          @keydown="handleTraversal"
+          :tabindex="isSameDay(day, currentDate) ? 0 : -1"
+        >
+          <time
+            :datetime="formatDate(day, 'yyyy-MM-dd')"
+            :class="[
+              isSameDay(day, today) && 'bg-blue-600 font-semibold text-white',
+              'mx-auto flex h-7 w-7 items-center justify-center rounded-full'
+            ]"
+          >
+            {{ formatDate(day, 'd') }}
+          </time>
+        </button>
+      </div>
+      <div class="mt-2 flex items-center text-sm">
+        <button
+          type="button"
+          class="ml-2 flex flex-none items-center justify-center p-1.5 text-blue-600 hover:text-blue-700 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"
+          @click="clearDate"
+        >
+          Clear
+        </button>
+
+        <button
+          type="button"
+          class="ml-auto flex flex-none items-center justify-center p-1.5 text-blue-600 hover:text-blue-700 focus:outline-none focus:ring-1 rounded focus:ring-blue-600"
+          @click="useToday"
+        >
+          Today
+        </button>
+      </div>
+    </div>
+  </div>
+</template>

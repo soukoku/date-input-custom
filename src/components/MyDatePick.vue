@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ref, Ref } from 'vue'
 import { CalendarIcon } from '@heroicons/vue/outline'
-import { MaskedRange } from 'imask'
-// import { IMaskComponent } from 'vue-imask'
 import parseDate from 'date-fns/parse'
 import formatDate from 'date-fns/format'
 
@@ -62,47 +60,6 @@ function handleTextChange(e: Event) {
   }
 }
 
-const maskProps = {
-  mask: Date,
-  pattern: 'MM/dd/yyyy',
-  // lazy:false,
-  // autofix:true,
-  // overwrite:true,
-  // min: this.min,
-  // max: this.max,
-  blocks: {
-    MM: {
-      mask: MaskedRange,
-      from: 1,
-      to: 12,
-      maxLength: 2
-    },
-    DD: {
-      mask: MaskedRange,
-      from: 1,
-      to: 31,
-      maxLength: 2
-    },
-    dd: {
-      mask: MaskedRange,
-      from: 1,
-      to: 31,
-      maxLength: 2
-    },
-    YYYY: {
-      mask: MaskedRange,
-      from: 1000,
-      to: 9999,
-      maxLength: 4
-    },
-    yyyy: {
-      mask: MaskedRange,
-      from: 1000,
-      to: 9999,
-      maxLength: 4
-    }
-  }
-}
 </script>
 
 <template>
