@@ -28,8 +28,14 @@ watch(dateValue, val => {
     <div class="border border-red-600">
       <MyCalendar v-model="dateValue" format="yyyy/MM/dd" />
     </div>
-    <div class="border border-red-600">
-      <MyCalendarButton v-model="dateValue" format="yyyy/MM/dd" class="p-10" prefer-custom />
+    <div class="border border-red-600 flex justify-center">
+      <MyCalendarButton
+        v-model="dateValue"
+        format="yyyy/MM/dd"
+        class="p-10"
+        prefer-custom
+        placement="bottom-end"
+      />
     </div>
   </div>
 </template>

@@ -32,7 +32,7 @@ const isOpen = ref(false)
 const button = ref<HTMLButtonElement>()
 const popup = ref<HTMLDivElement>()
 const calendar = ref<typeof MyCalendar>()
-const hasNativePicker = computed(() => {
+const useNativePicker = computed(() => {
   return !props.preferCustom && 'showPicker' in HTMLInputElement.prototype
 })
 const nativePicker = ref<HTMLInputElement>()
@@ -43,21 +43,25 @@ onBeforeUnmount(() => {
   tippyInstance?.destroy()
 })
 
-function togglePopup() {
-  if (hasNativePicker && nativePicker.value) {
-    const whatev = nativePicker.value as any
-    whatev.showPicker()
-  } else {
-    isOpen.value = !isOpen.value
-    if (isOpen.value) {
-      nextTick(() => {
-        configureTippyInstance()
-        if (popup.value) tippyInstance?.setContent(popup.value)
-      })
-    } else {
-      tippyInstance?.unmount()
-    }
+function showPicker() {
+  if (useNativePicker.value && nativePicker.value) {
+    const picker = nativePicker.value as any
+    try {
+      const date = parseDate(props.modelValue, props.format, new Date())
+      picker.value = formatDate(date, 'yyyy-MM-dd')
+    } catch (err) {}
+    picker.showPicker()
+  } else if (!isOpen.value) {
+    isOpen.value = true
+    nextTick(() => {
+      configureTippyInstance()
+      if (popup.value) tippyInstance?.setContent(popup.value)
+    })
   }
+}
+function hidePicker() {
+  isOpen.value = false
+  tippyInstance?.unmount()
 }
 function configureTippyInstance() {
   if (!tippyInstance) {
@@ -108,11 +112,13 @@ function handleNativeChange(e: Event) {
     }
   }
 }
+
+defineExpose({ showPicker })
 </script>
 <template>
   <div class="inline-flex items-center justify-center relative">
     <input
-      v-if="hasNativePicker"
+      v-if="useNativePicker"
       tabindex="-1"
       type="date"
       class="absolute top-0 left-0 right-0 bottom-0 opacity-0 -z-10"
@@ -125,7 +131,7 @@ function handleNativeChange(e: Event) {
     <button
       type="button"
       class="inline-flex items-center px-1 py-1 text-xs font-medium rounded text-gray-700 enabled:hover:bg-gray-50 focus:outline-none enabled:focus:ring-2 enabled:focus:ring-offset-2 enabled:focus:ring-blue-500"
-      @click="togglePopup"
+      @click="showPicker"
       :disabled="props.disabled"
       ref="button"
       v-bind="attrs"
@@ -139,7 +145,7 @@ function handleNativeChange(e: Event) {
     ref="popup"
     class="rounded-lg border border-gray-200 bg-white text-sm shadow-lg"
     style="width: 340px"
-    @keydown.esc="togglePopup"
+    @keydown.esc="hidePicker"
   >
     <focus-trap>
       <MyCalendar
